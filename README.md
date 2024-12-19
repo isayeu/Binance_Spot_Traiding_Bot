@@ -57,39 +57,29 @@ tmux new -s bbot
 ```
 Split screen at least for 2 panels. (4 for me is the best way)  
 ctrl+b % - for vertical split  
-ctrl+b " - for horisontal split  
+ctrl+b " - for horisontal split
+![Example](https://github.com/isayeu/Binance_Spot_Traiding_Bot/blob/main/Screenshot_20241219_193040.png)
+My panels config is:  
+1. Bot panel
+2. Scanner panel
+3. Monitoring panel
+4. Log panel
+
+Run monitor.py in 3rd panel, it will automatically runs bot in 1st panel
+```
+python monitor.py
+```
+Change scan_list file at your opinion,and run scanner.py in 2nd panel
+```
+python scan.py
+```
+4th panel i use for logs
+```
+tail -f trading_bot.log | awk '{$1=$2=$3=""; sub(/^ +/, ""); $1=""; print substr($0, 3)}'
+```
 
 Monitor the logs in trading_bot.log and check Telegram for trade updates.
+# Hello
+## I invite enthusiasts to take part in the development.
+# If you want to support the developer...
 
-Configuration
-
-The bot uses a JSON-based configuration file with the following fields:
-
-    api_key and api_secret: Binance API credentials.
-    trading_pairs: List of trading pairs to monitor (e.g., ["BTCUSDT", "ETHUSDT"]).
-    interval: Candlestick interval (e.g., 15m, 1h).
-    rsi_oversold and rsi_overbought: RSI thresholds for buy/sell signals.
-    telegram_token and telegram_chat_id: Telegram bot credentials for notifications.
-
-Features in Detail
-Indicators
-
-    RSI (Relative Strength Index): Determines oversold or overbought conditions.
-    MACD Histogram: Identifies momentum changes and potential reversals.
-
-Logging
-
-All events, including trades and errors, are logged in trading_bot.log for troubleshooting and analysis.
-Multithreading
-
-Efficiently monitors multiple trading pairs by leveraging multithreading, optimizing for your system's CPU cores.
-Future Improvements
-
-    Expand to other exchanges.
-    Add more indicators like Bollinger Bands or SMA.
-    Integrate a web dashboard for real-time monitoring.
-
-Disclaimer
-
-This bot is for educational purposes only. Trading cryptocurrencies involves significant risk, and the bot's performance is not guaranteed. Use at your own risk.
-License
