@@ -82,4 +82,4 @@ Monitor the logs in trading_bot.log and check Telegram for trade updates.
 # Hello
 ## I invite enthusiasts to take part in the development.
 # If you want to support the developer...
-
+![Tips](https://github.com/isayeu/Binance_Spot_Traiding_Bot/blob/main/tips.jpg)
