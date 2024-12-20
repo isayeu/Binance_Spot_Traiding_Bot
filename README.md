@@ -50,6 +50,7 @@ Usage
         Binance API key and secret.
         Telegram bot token and chat ID for notifications.
         Trading pairs, intervals, and other parameters.
+    Modify scan_list at your opinion.
 
 ## Run the bot:
 ```
