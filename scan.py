@@ -9,13 +9,14 @@ from config import load_config
 import aiohttp
 import nest_asyncio
 
-
+# Настройка логирования
 logging.basicConfig(
     filename='scan.log',
     level=logging.INFO,
     format='%(asctime)s - %(levelname)s - %(message)s'
 )
 
+# Загрузка конфигурации
 config = load_config()
 api_key = config['api_key']
 api_secret = config['api_secret']
@@ -30,11 +31,13 @@ interval = config['interval']
 existing_pairs_limit = int(config['existing_pairs_limit'])
 rsi_to_add = int(config['rsi_to_add'])
 limit = 200
-CACHE_TTL = 60
+CACHE_TTL = 60  # Время жизни кэша в секундах
 
+# Глобальный кэш для данных свечей
 data_cache = {}
 
 
+# Функция для отправки сообщения в Telegram
 async def send_telegram_message(message):
     url = f"https://api.telegram.org/bot{token}/sendMessage"
     payload = {
@@ -46,19 +49,20 @@ async def send_telegram_message(message):
         try:
             async with session.post(url, data=payload) as response:
                 if response.status == 200:
-                    logging.info("Message successfully sent to Telegram")
+                    logging.info("Сообщение успешно отправлено в Telegram")
                 else:
-                    logging.error(f"Error sending message to Telegram: {response.status}")
+                    logging.error(f"Ошибка при отправке сообщения в Telegram: {response.status}")
         except Exception as e:
-            logging.error(f"Error sending message to Telegram: {e}")
+            logging.error(f"Ошибка при отправке сообщения в Telegram: {e}")
 
 
 async def get_pairs_to_scan():
+    """Чтение списка пар для сканирования."""
     if os.path.exists(PAIRS_TO_SCAN):
         with open(PAIRS_TO_SCAN, 'r') as f:
             pairs = [line.strip() for line in f if line.strip()]
             return pairs
-    logging.warning("The file containing the list of pairs to scan was not found.")
+    logging.warning("Файл со списком пар для сканирования не найден.")
     return []
 
 
@@ -83,7 +87,7 @@ async def fetch_klines(symbol):
                     data_cache[symbol] = {'data': closes, 'timestamp': current_time}
                     return closes
     except Exception as e:
-        logging.error(f"Error retrieving data for {symbol}: {e}")
+        logging.error(f"Ошибка при получении данных для {symbol}: {e}")
         return []
 
 
@@ -92,18 +96,13 @@ async def process_pair(pair, existing_pairs_in_file, top_pairs):
     closes = await fetch_klines(pair)
     if closes:
         rsi = calculate_rsi(closes)
-        if rsi <= rsi_to_add and pair not in existing_pairs_in_file:
-            with open(TRADING_PAIRS_FILE, 'a') as f:
-                f.write(f"{pair}\n")
-            logging.info(f"New pair added: {pair} с RSI {rsi:.2f}")
-            existing_pairs_in_file.append(pair)
-            await send_telegram_message(f"🆕 New pair added: {pair} с RSI {rsi:.2f}")
 
         # Обновление топа
         existing_pair = next((p for p in top_pairs if p[0] == pair), None)
         if existing_pair:
             top_pairs.remove(existing_pair)
         top_pairs.append((pair, rsi))
+
         return pair, rsi
     return None
 
@@ -119,7 +118,7 @@ async def scan_and_update(pairs, widget, loop):
 
         # Проверяем лимит существующих пар
         while len(existing_pairs_in_file) >= existing_pairs_limit:
-            logging.info(f"Limit reached {existing_pairs_limit} pairs. Waiting for space to become available...")
+            logging.info(f"Достигнут лимит {existing_pairs_limit} пар. Ожидание освобождения места...")
             await asyncio.sleep(10)  # Задержка перед повторной проверкой
 
             # Обновляем список существующих пар
@@ -135,20 +134,42 @@ async def scan_and_update(pairs, widget, loop):
         ]
         await asyncio.gather(*tasks)
 
-        # Фильтруем пары, которые есть в trading_pairs.txt
-        filtered_top_pairs = [
+        # Исключаем пары, которые уже добавлены в файл
+        filtered_top_pairs_for_display = [
             (symbol, rsi) for symbol, rsi in top_pairs
             if symbol not in existing_pairs_in_file
         ]
 
-        # Сортируем топ пары по RSI
-        filtered_top_pairs = sorted(
-            filtered_top_pairs,
+        # Сортируем пары по RSI
+        sorted_top_pairs = sorted(
+            filtered_top_pairs_for_display,
             key=lambda x: x[1]
-        )[:(existing_pairs_limit - len(existing_pairs_in_file))]
+        )
+
+        # Отбираем ограниченное количество пар для отображения
+        pairs_to_display = sorted_top_pairs[:(existing_pairs_limit - len(existing_pairs_in_file))]
+
+        # Фильтруем пары, которые соответствуют условиям для добавления в файл
+        filtered_top_pairs = [
+            (symbol, rsi) for symbol, rsi in sorted_top_pairs
+            if rsi <= rsi_to_add
+        ]
+
+        # Добавляем самую топовую пару в файл trading_pairs.txt
+        if filtered_top_pairs:
+            top_pair = filtered_top_pairs[0]  # Самая топовая пара (с минимальным RSI)
+            symbol, rsi = top_pair
+
+            with open(TRADING_PAIRS_FILE, 'a') as f:
+                f.write(f"{symbol}\n")
+            logging.info(f"Добавлена новая пара: {symbol} с RSI {rsi:.2f}")
+            existing_pairs_in_file.append(symbol)
+
+            # Отправка уведомления в Telegram
+            await send_telegram_message(f"🆕 Добавлена новая пара: {symbol} с RSI {rsi:.2f}")
 
         # Обновляем UI
-        widget.body[:] = make_table(filtered_top_pairs).body
+        widget.body[:] = make_table(pairs_to_display).body
         loop.draw_screen()
 
 
@@ -166,7 +187,7 @@ def make_table(top_pairs):
     ]
 
     rows = [urwid.Text([
-        ('blue_text', "Top Pairs with Lowest RSI. Threshold: "),
+        ('blue_text', "Топ пар с минимальным RSI. Порог: "),
         ('green_text', f"{rsi_to_add} ")
     ])]
 
@@ -192,10 +213,10 @@ async def main(loop):
     """Основная функция."""
     pairs = await get_pairs_to_scan()
     if not pairs:
-        logging.error("The list of pairs to scan is empty.")
+        logging.error("Список пар для сканирования пуст.")
         return
 
-    placeholder = urwid.Text("Loading...")
+    placeholder = urwid.Text("Загрузка...")
     widget = urwid.ListBox(urwid.SimpleFocusListWalker([placeholder]))
 
     # Передаем палитру в MainLoop
@@ -222,7 +243,7 @@ def display_top_pairs():
     try:
         asyncio.run(main(loop))
     except RuntimeError as e:
-        logging.critical(f"Error starting interface: {e}")
+        logging.critical(f"Ошибка запуска интерфейса: {e}")
 
 
 def exit_on_q(key):
@@ -233,7 +254,7 @@ def exit_on_q(key):
 
 if __name__ == '__main__':
     try:
-        logging.info("Launching the application.")
+        logging.info("Запуск приложения.")
         display_top_pairs()
     except Exception as e:
-        logging.critical(f"Critical application error: {e}")
+        logging.critical(f"Критическая ошибка приложения: {e}")
