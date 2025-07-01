@@ -18,7 +18,7 @@ bridge = config['bridge']
 # Инициализация клиента Binance
 def initialize_client(api_key, api_secret):
     if not api_key or not api_secret:
-        raise ValueError("API keys not found. Check your configuration.")
+        raise ValueError("API ключи не найдены. Проверьте конфигурацию.")
     global client
     client = Client(api_key, api_secret, {"timeout": 60})
     client.futures_time()
@@ -44,16 +44,16 @@ def get_symbol_info_from_binance(symbol):
                     'free': free_to_sell if free_to_sell else 0.0,
                     'price': last_buy_price if last_buy_price else None
                 }
-        logging.warning(f"Symbol {symbol} not found in balances.")
+        logging.warning(f"Символ {symbol} не найден в балансах.")
         return {'free': 0.0, 'price': None}  # Возврат безопасных значений
     except requests.exceptions.Timeout:
-        logging.error(f"Timeout while getting symbol information {symbol}.")
+        logging.error(f"Таймаут при получении информации о символе {symbol}.")
         return {'free': 0.0, 'price': None}  # Возврат безопасных значений
     except requests.exceptions.RequestException as e:
-        logging.error(f"Network error while requesting symbol information {symbol}: {e}")
+        logging.error(f"Ошибка сети при запросе информации о символе {symbol}: {e}")
         return {'free': 0.0, 'price': None}  # Возврат безопасных значений
     except Exception as e:
-        logging.error(f"Unknown error while processing {symbol}: {e}")
+        logging.error(f"Неизвестная ошибка при обработке {symbol}: {e}")
         return {'free': 0.0, 'price': None}  # Возврат безопасных значений
 
 
@@ -76,7 +76,7 @@ def get_data(symbol, interval, limit):
     try:
         candles = client.get_klines(symbol=symbol, interval=interval, limit=limit)
         if not candles:
-            logging.warning(f"No data on candles for {symbol}")
+            logging.warning(f"Нет данных по свечам для {symbol}")
             return pd.DataFrame()  # Пустой DataFrame для обработки
         df = pd.DataFrame(candles, columns=[
             'timestamp', 'open', 'high', 'low', 'close', 'volume', 'close_time',
@@ -87,17 +87,17 @@ def get_data(symbol, interval, limit):
         df[['open', 'high', 'low', 'close', 'volume']] = df[['open', 'high', 'low', 'close', 'volume']].astype(float)
         return df
     except requests.exceptions.RequestException as e:
-        logging.error(f"Network error while requesting data {symbol}: {e}")
+        logging.error(f"Ошибка сети при запросе данных {symbol}: {e}")
         return pd.DataFrame()
     except Exception as e:
-        logging.error(f"Unknown error while processing data {symbol}: {e}")
+        logging.error(f"Неизвестная ошибка при обработке данных {symbol}: {e}")
         return pd.DataFrame()
 
 
 # Подсчет RSI
 def calculate_rsi(df, period=14):
     if df.empty or 'close' not in df.columns:
-        logging.error("Empty DataFrame or missing 'close' column for RSI calculation.")
+        logging.error("Пустой DataFrame или отсутствует колонка 'close' для расчета RSI.")
         return df
     df['rsi'] = talib.RSI(df['close'].values, timeperiod=period)
     return df
@@ -130,15 +130,15 @@ def process_trading_pair(symbol, interval, limit):
 def place_order(symbol, quantity, side):
     try:
         if quantity <= 0:
-            logging.error("Attempt to place an order with zero or negative volume.")
+            logging.error("Попытка разместить ордер с нулевым или отрицательным объемом.")
             return None
         order = client.create_order(symbol=symbol, side=side, type=ORDER_TYPE_MARKET, quantity=quantity)
-        logging.info(f"The order has been placed: {side} {quantity} {symbol}")
+        logging.info(f"Ордер размещен: {side} {quantity} {symbol}")
         return order
     except requests.exceptions.RequestException as e:
-        logging.error(f"Network error while placing order {symbol}: {e}")
+        logging.error(f"Ошибка сети при размещении ордера {symbol}: {e}")
     except Exception as e:
-        logging.error(f"Unknown error while placing order {symbol}: {e}")
+        logging.error(f"Неизвестная ошибка при размещении ордера {symbol}: {e}")
     return None
 
 

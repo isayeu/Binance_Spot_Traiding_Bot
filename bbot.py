@@ -41,7 +41,7 @@ cfg_min_profit = float(config['cfg_min_profit'])
 min_profit = qty_to_invest * cfg_min_profit
 commission_rate = 0.001
 
-logging.info(f"The program has been launched")
+logging.info(f"Программа запущена")
 
 
 # Функция информирования в Telegram
@@ -49,7 +49,7 @@ def send_telegram_message(message, retries=3):
     token = config.get('telegram_token')
     chat_id = config.get('telegram_chat_id')
     if not token or not chat_id:
-        logging.error("Missing token or chat_id for Telegram.")
+        logging.error("Отсутствует токен или chat_id для Telegram.")
         return None
     url = f"https://api.telegram.org/bot{token}/sendMessage"
     payload = {'chat_id': chat_id, 'text': message, 'parse_mode': 'HTML'}
@@ -59,18 +59,18 @@ def send_telegram_message(message, retries=3):
             response = requests.post(url, data=payload, timeout=10)
             if response.status_code == 429:  # Лимит запросов Telegram
                 retry_after = int(response.headers.get("Retry-After", 1))
-                logging.warning(f"Telegram limit exceeded. Retry in {retry_after} seconds.")
+                logging.warning(f"Превышен лимит Telegram. Повтор через {retry_after} секунд.")
                 time.sleep(retry_after)
                 continue
             response.raise_for_status()
             response_json = response.json()
             if response_json.get('ok'):
                 return response_json
-            logging.error(f"Error Telegram API: {response_json.get('description')}")
+            logging.error(f"Ошибка Telegram API: {response_json.get('description')}")
         except requests.exceptions.RequestException as e:
-            logging.error(f"Attempt {attempt + 1}: Telegram network error: {e}")
+            logging.error(f"Попытка {attempt + 1}: Ошибка сети Telegram: {e}")
         except Exception as e:
-            logging.error(f"Unexpected error in send_telegram_message: {e}")
+            logging.error(f"Непредвиденная ошибка в send_telegram_message: {e}")
     return None
 
 
@@ -101,9 +101,9 @@ def remove_symbol_from_file(symbol, filename='trading_pairs.txt'):
         with open(filename, 'w') as file:
             for pair in pairs:
                 file.write(pair + '\n')
-        logging.info(f"Trading pair {symbol} removed from file {filename}.")
+        logging.info(f"Торговая пара {symbol} удалена из файла {filename}.")
     else:
-        logging.error(f"Trading pair {symbol} not found in file {filename}.")
+        logging.error(f"Торговая пара {symbol} не найдена в файле {filename}.")
 
 
 # monitoring 30>пара>70 RSI
@@ -126,14 +126,14 @@ def monitoring():
             try:
                 df = future.result()
                 if df.empty:
-                    logging.warning(f"Empty DataFrame for {symbol}. Skip.")
+                    logging.warning(f"Пустой DataFrame для {symbol}. Пропускаем.")
                     continue
                 # Обрабатываем индикаторы
                 df = calculate_rsi(df)
                 df = calculate_macd_histogram(df)
                 data[symbol] = df
             except Exception as e:
-                logging.error(f"Error retrieving data for {symbol}: {e}")
+                logging.error(f"Ошибка получения данных для {symbol}: {e}")
 
     for symbol, df in data.items():
         try:
@@ -150,7 +150,7 @@ def monitoring():
                                     bridge_balance, min_profit,
                                     load_total_profit())
         except Exception as e:
-            logger.error(f"Data processing error {symbol}: {str(e)}")
+            logger.error(f"Ошибка обработки данных {symbol}: {str(e)}")
 
 
 # Функция для выполнения торговой логики
@@ -162,7 +162,7 @@ def execute_trade_logic(symbol, df, fine_df, trends, bridge_balance,
 
         min_qty, step_size = get_min_lot_size(symbol)
         if min_qty is None:
-            logging.error(f"Failed to get minimum lot for {symbol}")
+            logging.error(f"Не удалось получить минимальный лот для {symbol}")
             return total_profit
 
         # Получаем информацию о позиции напрямую с Binance
@@ -172,7 +172,7 @@ def execute_trade_logic(symbol, df, fine_df, trends, bridge_balance,
         if last_rsi <= rsi_oversold and next_move == 'growth' and symbol_info['free'] < min_qty:
             bridge_balance = get_balance(bridge)
             if bridge_balance < qty_to_invest:
-                logger.error(f"Insufficient funds to purchase {symbol} for {qty_to_invest} {bridge}")
+                logger.error(f"Недостаточно средств для покупки {symbol} на {qty_to_invest} {bridge}")
                 return total_profit
 
             current_price = fine_df['close'].iloc[-1]
@@ -180,7 +180,7 @@ def execute_trade_logic(symbol, df, fine_df, trends, bridge_balance,
             quantity = adjust_quantity(quantity, step_size)
 
             if quantity < min_qty:
-                logging.error(f"Quantity for trade {quantity} less than minimum size {min_qty} for {symbol}.")
+                logging.error(f"Количество для торговли {quantity} меньше минимального размера {min_qty} для {symbol}.")
                 return total_profit
 
             buy(symbol, quantity, current_price, qty_to_invest, min_profit)
@@ -191,7 +191,7 @@ def execute_trade_logic(symbol, df, fine_df, trends, bridge_balance,
             last_buy_price = symbol_info['price']
 
             if last_buy_price is None:
-                logging.error(f"No purchase data for {symbol}")
+                logging.error(f"Нет данных о покупке для {symbol}")
                 return total_profit
 
             successful_sale = sell(symbol, quantity, min_profit)
@@ -203,10 +203,10 @@ def execute_trade_logic(symbol, df, fine_df, trends, bridge_balance,
                 save_total_profit(total_profit)
                 remove_symbol_from_file(symbol, filename='trading_pairs.txt')
             else:
-                logging.error(f"sell {symbol} failed or was skipped.")
+                logging.error(f"Продажа {symbol} не удалась или была пропущена.")
 
     except Exception as e:
-        logging.error(f"Error executing trading logic for {symbol}: {e}")
+        logging.error(f"Ошибка выполнения торговой логики для {symbol}: {e}")
     return total_profit
 
 
@@ -220,8 +220,8 @@ def buy(symbol, quantity, current_price, qty_to_invest, min_profit):
     order = place_order(symbol, quantity, SIDE_BUY)
     if order:
         price = float(order['fills'][0]['price'])
-        send_telegram_message(f"📈 Buy {quantity} {symbol.replace('USDT', '')} price {price}")
-        logger.warning(f"Buy {quantity} {symbol.replace('USDT', '')} price {price}")
+        send_telegram_message(f"📈 Покупка {quantity} {symbol.replace('USDT', '')} по цене {price}")
+        logger.warning(f"Покупка {quantity} {symbol.replace('USDT', '')} по цене {price}")
         return True
     else:
         return False
@@ -237,7 +237,7 @@ def sell(symbol, quantity, min_profit, filename='trading_pairs.txt'):
     last_buy_price = symbol_info['price'] if symbol_info else None
 
     if last_buy_price is None:
-        logging.error(f"No purchase data for {symbol}")
+        logging.error(f"Нет данных о покупке для {symbol}")
         return False  # Возвращаем False, если не было данных о покупке
 
     # Рассчитываем профит
@@ -245,7 +245,7 @@ def sell(symbol, quantity, min_profit, filename='trading_pairs.txt'):
 
     # Проверяем, что профит больше минимального
     if profit < min_profit:
-        logging.error(f"Profit for sale {symbol.replace('USDT', '')} is {profit:.2f} {bridge}, which is less than the minimum profit {min_profit} {bridge}.")
+        logging.error(f"Профит для продажи {symbol.replace('USDT', '')} составляет {profit:.2f} {bridge}, что меньше минимального профита {min_profit} {bridge}.")
         return False  # Возвращаем False, если профит меньше минимального
 
     # Корректируем количество с учетом шага лота
@@ -256,8 +256,8 @@ def sell(symbol, quantity, min_profit, filename='trading_pairs.txt'):
     order = place_order(symbol, quantity, SIDE_SELL)
     if order:
         price = float(order['fills'][0]['price'])
-        send_telegram_message(f"📉 Sold {quantity} {symbol.replace('USDT', '')} for {price} with profit {profit:.2f} {bridge}")
-        logger.warning(f"Sold {quantity} {symbol.replace('USDT', '')} for {price} with profit {profit:.2f} {bridge}")
+        send_telegram_message(f"📉 Продано {quantity} {symbol.replace('USDT', '')} по {price} с профитом {profit:.2f} {bridge}")
+        logger.warning(f"Продано {quantity} {symbol.replace('USDT', '')} по {price} с профитом {profit:.2f} {bridge}")
 
         return True  # Возвращаем True при успешной продаже
     else:

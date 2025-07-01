@@ -21,9 +21,9 @@ def format_trend_display(last_trend):
     elif last_trend == "flat":
         return ("flat", "N/A")
     elif last_trend == "growth":
-        return ("growth", "growth")
+        return ("growth", "Рост")
     else:
-        return ("fall", "fall")
+        return ("fall", "Спад")
 
 
 def format_profit_display(profit, min_profit):
@@ -65,28 +65,28 @@ def display_indicators(trading_pairs, data, account_balances, bridge_balance,
 
     # Заголовок баланса и профита
     balance_text = urwid.Text([
-        ('blue_text', f" Balance {bridge}:"),
+        ('blue_text', f" Текущий баланс {bridge}:"),
         ('green_text', f"{bridge_balance}"),
         ('default', " | "),
-        ('blue_text', "Profit:"),
+        ('blue_text', "Профит:"),
         ('green_text', f"{total_profit}"),
         ('default', " | "),
         ('blue_text', f"1 BTC"),
         ('default', " = "),
         ('green_text', f"{btc_price} USDT")
     ])
-    balance_box = urwid.LineBox(balance_text, title="Balances")
+    balance_box = urwid.LineBox(balance_text, title="Информация о Балансе")
 
     # Заголовки таблицы
     table_header = urwid.AttrMap(
         urwid.Columns([
-            urwid.Text("Symbol", align='left'),
+            urwid.Text("Лот", align='left'),
             urwid.Text("RSI", align='left'),
-            urwid.Text("Trend", align='left'),
-            urwid.Text("Price", align='left'),
-            urwid.Text("Bought for", align='left'),
-            urwid.Text("Profit", align='left'),
-            urwid.Text("Balance", align='left'),
+            urwid.Text("Тренд", align='left'),
+            urwid.Text("Цена", align='left'),
+            urwid.Text("Цена покупки", align='left'),
+            urwid.Text("Профит", align='left'),
+            urwid.Text("Баланс", align='left'),
         ]), 'default'
     )
 
@@ -132,7 +132,7 @@ def display_indicators(trading_pairs, data, account_balances, bridge_balance,
 
     # Сборка виджетов
     table_list = urwid.Pile(table_rows)
-    table_box = urwid.LineBox(table_list, title="Info")
+    table_box = urwid.LineBox(table_list, title="Торговые Пары")
 
     # Главный контейнер
     main_view = urwid.Pile([balance_box, table_box])

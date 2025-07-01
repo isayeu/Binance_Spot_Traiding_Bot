@@ -16,12 +16,12 @@ def restart_bbot():
     # Отправляем Ctrl+C для завершения предыдущего процесса, если он есть
     stop_cmd = subprocess.run(["tmux", "send-keys", "-t", f"{tmux_window}:{tmux_pane}", "C-c"], check=False)
     if stop_cmd.returncode != 0:
-        print("Error: Failed to send Ctrl+C. Check that the tmux session exists.")
+        print("Ошибка: не удалось отправить Ctrl+C. Проверьте, что сессия tmux существует.")
 
     # Отправляем команду для запуска bbot.py
     start_cmd = subprocess.run(["tmux", "send-keys", "-t", f"{tmux_window}:{tmux_pane}", f"python3 {script_name}", "Enter"], check=False)
     if start_cmd.returncode != 0:
-        print("Error: Failed to start bbot.py. Check if tmux session exists.")
+        print("Ошибка: не удалось запустить bbot.py. Проверьте, что сессия tmux существует.")
 
 
 def monitor_file_changes():
@@ -31,12 +31,12 @@ def monitor_file_changes():
         try:
             current_modified = trading_pairs_path.stat().st_mtime
             if current_modified != last_modified:
-                print(f"Changes in {trading_pairs_path}. Reloading {script_name}...")
+                print(f"Изменения в {trading_pairs_path}. Перезапуск {script_name}...")
                 restart_bbot()
                 last_modified = current_modified
             time.sleep(5)  # Проверка каждые 5 секунд
         except FileNotFoundError:
-            print(f"File {trading_pairs_path} not found.")
+            print(f"Файл {trading_pairs_path} не найден.")
             time.sleep(5)
 
 
@@ -46,7 +46,7 @@ def monitor_bbot_process():
         # Проверяем, запущен ли процесс bbot.py
         result = subprocess.run(["pgrep", "-f", script_name], capture_output=True)
         if result.returncode != 0:
-            print(f"{script_name} not running. Restart...")
+            print(f"{script_name} не запущен. Перезапуск...")
             restart_bbot()
         time.sleep(5)  # Проверка каждые 5 секунд
 

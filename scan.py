@@ -71,6 +71,13 @@ def calculate_rsi(closes):
     return talib.RSI(np.array(closes, dtype=float), timeperiod=14)[-1]
 
 
+def calculate_sma(closes, period):
+    """Рассчитывает простую скользящую среднюю (SMA)."""
+    if len(closes) < period:
+        return None
+    return np.mean(closes[-period:])
+
+
 async def fetch_klines(symbol):
     """Получает данные свечей для указанной пары с кэшированием."""
     current_time = asyncio.get_event_loop().time()
@@ -96,14 +103,17 @@ async def process_pair(pair, existing_pairs_in_file, top_pairs):
     closes = await fetch_klines(pair)
     if closes:
         rsi = calculate_rsi(closes)
+        sma_200 = calculate_sma(closes, 200)
 
-        # Обновление топа
-        existing_pair = next((p for p in top_pairs if p[0] == pair), None)
-        if existing_pair:
-            top_pairs.remove(existing_pair)
-        top_pairs.append((pair, rsi))
+        # Проверяем, что SMA рассчитана (не None) и последняя цена ниже SMA
+        if sma_200 is not None and closes[-1] < sma_200:
+            # Обновление топа
+            existing_pair = next((p for p in top_pairs if p[0] == pair), None)
+            if existing_pair:
+                top_pairs.remove(existing_pair)
+            top_pairs.append((pair, rsi))
 
-        return pair, rsi
+            return pair, rsi
     return None
 
 
@@ -118,7 +128,6 @@ async def scan_and_update(pairs, widget, loop):
 
         # Проверяем лимит существующих пар
         while len(existing_pairs_in_file) >= existing_pairs_limit:
-            logging.info(f"Достигнут лимит {existing_pairs_limit} пар. Ожидание освобождения места...")
             await asyncio.sleep(10)  # Задержка перед повторной проверкой
 
             # Обновляем список существующих пар
